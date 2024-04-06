@@ -1,0 +1,27 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mini-admin-binding
+  namespace: default
+subjects:
+- kind: User
+  name: abbey # Replace <CN> with the CN of the user
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: mini-admin
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: mini-admin-clusterrole
+subjects:
+- kind: User
+  name: abbey
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: mini-admin-cluster
+  apiGroup: rbac.authorization.k8s.io

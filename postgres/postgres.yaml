@@ -1,0 +1,14 @@
+global:
+  pgpool:
+    adminUsername: 'admin'
+    adminPassword: 'admin'
+service:
+  type: ClusterIP
+volumePermissions:
+  enabled : True
+persistence:
+  storageClass: nfs-client
+postgresql:
+    username: 'psql'
+    password: 'psql'
+    postgresPassword: 'psql'

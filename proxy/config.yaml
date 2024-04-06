@@ -1,0 +1,7 @@
+controller:
+  dnsPolicy: ClusterFirstWithHostNet
+  hostNetwork: true
+  ingressClassResource:
+    enabled: true
+  # service:
+  #  externalIPs : ["10.80.1.37"]

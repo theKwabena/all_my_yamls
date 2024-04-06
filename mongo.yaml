@@ -1,0 +1,10 @@
+architecture: replicaset
+replicaCount: 3
+persistance:
+  storageClass: 'nfs-client'
+auth:
+  rootPassword: 'secret-pass'
+image:
+  registry: docker.io
+  repository: bitnami/mongodb
+  tag: 4.4-debian-10

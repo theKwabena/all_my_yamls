@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pg-admin-secret
+type: Opaque
+data:
+  pg-default-email : YWRtaW5AYWItY2xvdWQuaW8=
+  pg-admin-pass: cGFzczEyMw==
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pg-admin
+spec:
+  selector:
+    matchLabels:
+      app: pg-admin
+  template:
+    metadata:
+      labels:
+        app: pg-admin
+    spec:
+      containers:
+      - name: pg-admin
+        image: dpage/pgadmin4
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PGADMIN_LISTEN_PORT
+          value: '5050'
+        - name : PGADMIN_DEFAULT_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: pg-admin-secret
+              key: pg-default-email
+        - name: PGADMIN_DEFAULT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pg-admin-secret
+              key: pg-admin-pass
+      # nodeSelector:
+      #   kubernetes.io/os: linux
+      #   runs: ingress
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pg-admin-service
+spec:
+  selector:
+    app: pg-admin
+  ports:
+  - protocol: TCP 
+    port: 5050
+    targetPort: 8080 
+
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pg-ingress
+  labels:
+    name: pg-ingress
+spec:
+  rules:
+  - host: pgadmin.ab-cloud.io
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: pg-admin-service
+            port: 
+              number: 5050
+
+
