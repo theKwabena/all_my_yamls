@@ -1,0 +1,7 @@
+replicaCount: 2
+storageClass:
+  name: 'temp-nfs'
+  provisionerName: 'k8s-sigs.io/temp-nfs'
+nfs:
+  server: 10.80.1.191
+  path: '/home/share'

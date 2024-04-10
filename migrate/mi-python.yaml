@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mi-python
+spec:
+  selector:
+    matchLabels:
+      app: mi-python
+  template:
+    metadata:
+      labels:
+        app: mi-python
+    spec:
+      containers:
+        - name: mi-python
+          image: <Image>
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          ports:
+          - containerPort: 8000
+          volumeMounts:
+            - name:  mailboxes
+              mountPath:  /home/data
+      initContainers:
+        - name: py-redis
+          image: redis
+          restartPolicy: Always
+          volumeMounts:
+            - name: redis-data
+              mountPath:  /opt
+
+      volumes:
+        - name: mailboxes
+          persistentVolumeClaim:
+            claimName: mailboxes
+
+        - name: py-redis
+          emptyDir: {}
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-service
+spec:
+  selector:
+    app: mi-python
+  ports:
+  - protocol: TCP
+    port: 8000
+    targetPort: 8000

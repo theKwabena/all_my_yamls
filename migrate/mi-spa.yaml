@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mi-spa
+  namespace: migrate
+spec:
+  selector:
+    matchLabels:
+      app: mi-spa
+  template:
+    metadata:
+      labels:
+        app: mi-spa
+    spec:
+      imagePullSecrets:
+      - name: knust-registry
+      containers:
+      - name: mi-spa
+        image: dreg.knust.edu.gh/mi-front:0.0.8
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spa-service
+  namespace: migrate
+spec:
+  selector:
+    app: mi-spa
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 80
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-ingress
+  namespace: migrate
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: migrate.ab-cloud.io
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: spa-service
+            port: 
+              number: 8080
