@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  proxy:
+    image: proxy
+    container_name: control-pane-proxy
+    volumes:
+      - ./config/:/usr/local/etc/haproxy:ro
+    sysctls:
+      - net.ipv4.ip_unprivileged_port_start=0
+    ports:
+      - 6443:6443
+      - 80:80
+    networks:
+      dns-network:
+        ipv4_address: 172.20.0.11
+    dns:
+      - 172.20.0.10
+
+networks:
+  dns-network:
+    external: true
