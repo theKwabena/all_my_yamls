@@ -1,0 +1,22 @@
+$TTL 2d  ; Time to live, Time defines how long the dns entries should be kept in cache
+; We need two entries that we always need in a new dns zone
+
+; 1. SOA DNS record. Start of Authority record - Administrative information about the zone
+
+@       IN      SOA     ns.some-cloud.io.     admin.some-cloud.io (
+                        2024041001; Serial  # increase when config is updated
+                        12h ; refresh
+                        15m ; retry
+                        3w ; expire
+                        2h ; minimum ttl
+)
+
+;Name server Infomation
+; Tells everybody which server is responsible for containing all records in that zone
+@       IN      NS      ns.some-cloud.io.
+        
+
+; IP Address of domain name server
+
+ns      		    IN      A      ip of nameserver
+#                   IN      a      some-other-ip
