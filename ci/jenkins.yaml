@@ -1,0 +1,10 @@
+services:
+  jenkins:
+    image: jenkins/jenkins
+    container_name: jenkins_master
+    volumes:
+    - jenkins_data:/var/jenkins_home
+    ports:
+    - 3553:8080
+    # dns: 
+    # - 10.80.1.191
