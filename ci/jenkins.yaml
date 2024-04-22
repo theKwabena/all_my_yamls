@@ -6,8 +6,8 @@ services:
     - jenkins_data:/var/jenkins_home
     ports:
     - 3553:8080
-    # dns: 
-    # - 10.80.1.191
+    dns: 
+    - 10.80.1.191
 
 volumes:
   jenkins_data:
