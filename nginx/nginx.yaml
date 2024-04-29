@@ -1,0 +1,15 @@
+
+services:
+  nginx:
+    build:
+      context: ./
+    container_name: nginx
+    volumes:
+      - ./sites_available:/var/www/sites_available
+      - ./config:/etc/nginx/conf.d
+
+    restart: unless-stopped
+    ports:
+    - 9009:80
+    - 8443:443
+    - 7080:8080
