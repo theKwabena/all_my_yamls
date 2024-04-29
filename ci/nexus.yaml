@@ -1,11 +1,12 @@
 services:
     nexus:
-      image: 
+      image: sonatype/nexus3
       container_name: nexus
       volumes:
       - nexus_data:/nexus-data
       ports:
       - 3779:8081
+      - 3889:3889
       dns:
       - 10.80.1.191
 
