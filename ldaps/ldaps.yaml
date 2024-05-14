@@ -2,6 +2,7 @@ version: '2'
 
 services:
   openldap:
+    container_name: ewiem_ldap
     image: bitnami/openldap:latest
     ports:
       - '1389:1389'
@@ -10,6 +11,17 @@ services:
       - LDAP_ROOT=dc=ewiem,dc=com
     volumes:
       - 'openldap_data:/bitnami/openldap'
+
+  ldapsui:
+    container_name: ldap_ui
+    image: dnknth/ldap-ui:latest
+    environment:
+      - LDAP_URL=ldap://openldap/
+      - BASE_DN=dc=ewiem,dc=com
+    ports:
+      - 5003:5000
+
+
 
 volumes:
   openldap_data:
