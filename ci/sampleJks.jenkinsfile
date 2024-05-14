@@ -1,0 +1,171 @@
+
+@Library('lutermart-shared-lib')
+
+
+def shouldExecuteOnBranch(String branchName){
+    return BRANCH_NAME == branchName
+}
+
+
+
+
+
+
+
+pipeline {
+    agent {
+        label 'flutter-docker'
+    }
+
+    environment {
+      PATH = "$PATH:/home/jenkins/flutter/bin"
+
+      // SERVER CONFIG
+      SERVER_USER = 'swarm' //USER is the jenkins user and can be used if jenkins user have access to deployment server
+      SERVER_ADDRESS = '10.80.1.192'
+      SERVER_CREDENTIALS_ID = 'slv'
+      SERVER_BASE_PATH = "/home/${SERVER_USER}"
+
+      // NGINX CONFIG
+      NGINX_CONFIGURATION_DIRECTORY =  "/etc/nginx/conf.d"  //"${SERVER_BASE_PATH}/nginx-conf.d"
+      NGINX_SITES_DIRECTORY = "/var/www/sites_available" //"${SERVER_BASE_PATH}/sites_available"
+      // APP CONFIG
+      APP_NAME = 'baahbay'
+      APP_CONFIG_FILE = "${WORKSPACE}/app.conf"
+      APP_BUILD_DIRECTORY = "${WORKSPACE}/build"
+    }
+    stages {
+        stage('Test Flutter App'){
+            // agent {
+            //     docker {
+            //         image 'ghcr.io/cirruslabs/flutter:3.19.6'
+            //         // Run the container on the node specified at the
+            //         // top-level of the Pipeline, in the same workspace,
+            //         // rather than on a new node entirely:
+            //         reuseNode true
+            //     }
+            // }
+            when {
+                expression {
+                    shouldExecuteOnBranch("master")
+                }
+            }
+            steps {
+                script {
+                    testFlutterApp()
+                }
+            }
+        }
+
+        // stage('Build Docker Image'){
+        //      when {
+        //             expression {
+        //                 shouldExecuteOnBranch('master')
+        //             }
+        //      }
+        //     steps {
+        //         script {
+
+        //             echo "---- BUILDING DOCKER IMAGE FOR APP ----"
+        //             // def image = docker.build('something')
+        //             def config = dockerConfig(
+        //                 registry: 'http://registry.ewiem.com', 
+        //                 credentials_id: 'docker-repo-credentials'
+        //             )
+        //             def params = dockerBuildParams(
+        //                 imageName: 'trial-push1', 
+        //                 imageTag: '1.1.0', 
+        //                 config:config, 
+        //                 push:false
+        //             )
+        //             buildDockerImage(params) // Set the docker image to the env so any agent can push
+        //             env.DOCKER_IMAGE = "$params.imageName:$params.imageTag"
+        //             echo "$DOCKER_IMAGE"
+        //         }
+        //     }
+        // }
+
+        // stage('Push Docker Image'){
+        //     when {
+        //         expression {
+        //             shouldExecuteOnBranch('master')
+        //         }
+        //     }
+        //     steps {
+        //         script {
+        //             pushDockerImage(
+        //                 image:env.DOCKER_IMAGE, 
+        //                 registry: 'registry.ewiem.com', 
+        //                 credentials_id: 'docker-repo-credentials'
+        //             )
+        //         }
+        //     }
+        // }
+
+
+
+        // stage('Move build files to test server'){
+        //     when {
+        //         expression {
+        //             shouldExecuteOnBranch('master')
+        //         }
+        //     }
+
+        //     steps {
+        //         script {
+
+        //             buildFlutterApp()
+
+        //             def deployment_server = [
+        //                 credentials_id: server_parameters.credentials_id,
+        //                 user: server_parameters.user,
+        //                 address: server_parameters.address
+        //             ]
+                    
+        //             deployBuildFiles("localhost", "./build", deployment_server)
+        //         }
+        //     }
+        // }
+
+
+        stage('Deploy Nginx Configuration to Test Server'){
+            when {
+                expression {
+                    shouldExecuteOnBranch('master')
+                }
+            }
+
+            steps {
+                script {
+                    // def conf = generateNginxConf("localhost", "/var/www/index") Change this to project specific nginx configuration.
+                    def server = serverConfig(
+                        user: SERVER_USER, 
+                        address: SERVER_ADDRESS,
+                        credentialsID: SERVER_CREDENTIALS_ID
+                    )
+
+                    def host = nginxConfig(
+                        configurationDirectory: NGINX_CONFIGURATION_DIRECTORY,
+                        sitesDirectory: NGINX_SITES_DIRECTORY,
+                        server: server
+                    )
+                    def app = appConfig(
+                        appName: APP_NAME,
+                        configFile: APP_CONFIG_FILE,
+                        buildDirectory: APP_BUILD_DIRECTORY
+                    )
+                    deployApp(host,app)
+                    
+                    // def deployment_server = [
+                    //     credentials_id: 'slv',
+                    //     user: 'swarm',
+                    //     address: '10.80.1.192'
+                    // ]
+                    
+                    // deployNginxConf(conf+".conf",deployment_server)
+                }
+            }
+        }
+
+    }
+}

@@ -1,12 +1,12 @@
-
 services:
   nginx:
     build:
       context: ./
     container_name: nginx
     volumes:
-      - ./sites_available:/var/www/sites_available
-      - ./config:/etc/nginx/conf.d
+      - /var/www/sites_available/:/var/www/sites_available/
+      - /etc/nginx/conf.d/:/etc/nginx/conf.d/
+      - /var/log/nginx:/var/log/nginx/
 
     restart: unless-stopped
     ports:

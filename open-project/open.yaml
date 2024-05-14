@@ -1,0 +1,16 @@
+
+
+services:
+  open_project:
+    container_name: open_project
+    image: openproject/openproject:14
+    ports: 
+      - 8080:80
+    environment:
+      - OPENPROJECT_HOST_NAME=tasks.ewiem.com
+      - OPENPROJECT_SECRET_KEY=8VvzsySGpfH9XqkxPBd5CIoZAbKeo5j2
+      - OPENPROJECT_HTTPS=false
+    volumes:
+      -  ./data/pg:/var/openproject/pgdata
+      - ./data/assets:/var/openproject/assets
+    

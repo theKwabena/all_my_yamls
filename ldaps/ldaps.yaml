@@ -1,0 +1,16 @@
+version: '2'
+
+services:
+  openldap:
+    image: bitnami/openldap:latest
+    ports:
+      - '1389:1389'
+      - '1636:1636'
+    environment:
+      - LDAP_ROOT=dc=ewiem,dc=com
+    volumes:
+      - 'openldap_data:/bitnami/openldap'
+
+volumes:
+  openldap_data:
+    driver: local
