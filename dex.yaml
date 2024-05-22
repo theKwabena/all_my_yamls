@@ -1,0 +1,267 @@
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: dex
+  name: dex
+  namespace: dex
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: dex
+  template:
+    metadata:
+      labels:
+        app: dex
+    spec:
+      serviceAccountName: dex # This is created below
+      containers:
+      - image: ghcr.io/dexidp/dex:v2.32.0
+        name: dex
+        command: ["/usr/local/bin/dex", "serve", "/etc/dex/cfg/config.yaml"]
+
+        ports:
+        - name: https
+          containerPort: 5556
+
+        volumeMounts:
+        - name: config
+          mountPath: /etc/dex/cfg
+        - name: tls
+          mountPath: /etc/dex/tls
+
+        env:
+        - name: GITHUB_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: github-client
+              key: client-id
+        - name: GITHUB_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: github-client
+              key: client-secret
+        - name: LDAP_SERVICE_USER
+          valueFrom:
+            secretKeyRef:
+              name: ldap-client
+              key: user
+        - name: LDAP_SERVICE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ldap-client
+              key: password
+
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 5556
+            scheme: HTTPS
+      volumes:
+      - name: config
+        configMap:
+          name: dex
+          items:
+          - key: config.yaml
+            path: config.yaml
+      - name: tls
+        secret:
+          secretName: dex.ab-cloud.io
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: dex
+  namespace: dex
+data:
+  config.yaml: |
+    issuer: https://dex.ewiem.com:32000
+    storage:
+      type: kubernetes
+      config:
+        inCluster: true
+    web:
+      https: 0.0.0.0:5556
+      tlsCert: /etc/dex/tls/tls.crt
+      tlsKey: /etc/dex/tls/tls.key
+    connectors:
+    - type: github
+      id: github
+      name: GitHub
+      config:
+        clientID: $GITHUB_CLIENT_ID
+        clientSecret: $GITHUB_CLIENT_SECRET
+        redirectURI: https://dex.ewiem.com:32000/callback
+        org: kubernetes
+    - type: ldap
+      id: ldap
+      # Required field for connector name.
+      name: LDAP
+      config:
+        # Host and optional port of the LDAP server in the form "host:port".
+        # If the port is not supplied, it will be guessed based on "insecureNoSSL",
+        # and "startTLS" flags. 389 for insecure or StartTLS connections, 636
+        # otherwise.
+        host: ipa.ewiem.com:636
+
+        # Following field is required if the LDAP host is not using TLS (port 389).
+        # Because this option inherently leaks passwords to anyone on the same network
+        # as dex, THIS OPTION MAY BE REMOVED WITHOUT WARNING IN A FUTURE RELEASE.
+        #
+        # insecureNoSSL: true
+
+        # If a custom certificate isn't provide, this option can be used to turn on
+        # TLS certificate checks. As noted, it is insecure and shouldn't be used outside
+        # of explorative phases.
+        #
+        # insecureSkipVerify: true
+
+        # When connecting to the server, connect using the ldap:// protocol then issue
+        # a StartTLS command. If unspecified, connections will use the ldaps:// protocol
+        #
+        # startTLS: true
+
+        # Path to a trusted root certificate file. Default: use the host's root CA.
+        #rootCA: /etc/dex/ldap.ca
+
+        # A raw certificate file can also be provided inline.
+        rootCAData: | 
+          LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURoVENDQW0yZ0F3SUJBZ0lCQVRBTkJna3Foa2lHOXcwQkFRc0ZBREEwTVJJd0VBWURWUVFLREFsRlYwbEYKVFM1RFQwMHhIakFjQmdOVkJBTU1GVU5sY25ScFptbGpZWFJsSUVGMWRHaHZjbWwwZVRBZUZ3MHlOREExTVRReApPVEExTlRCYUZ3MDBOREExTVRReE9UQTFOVEJhTURReEVqQVFCZ05WQkFvTUNVVlhTVVZOTGtOUFRURWVNQndHCkExVUVBd3dWUTJWeWRHbG1hV05oZEdVZ1FYVjBhRzl5YVhSNU1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0MKQVE4QU1JSUJDZ0tDQVFFQXBNZ3Z4djZ6bitWVlRZNHFCYmtwbUVnRzFKUU1XVEw2MGtvVVFOL0RkWkVjYUtjKwpxM0JveGYzaGFMc3RrT1RtQ3NWZHpoVGNWdEE0YUIzdXlOTmZYaWZhSGI0cVZUamh6T1ZFcGdYVkNzZExlbFdaCnV4VkZ0NTNZNndlUHhHMnNVQUc3d24vTXpDMEQzMFlJTlc1VVVmZWZyZUJhQUpGSm1ZbGY2VGt1YjVJTENLaWUKaEdJVWhpZUszdklVSllicEhTekRGM1luU0o2eEVpTTZTRWJRakl0bkk2cUVKKzFIejFaL2RlK2FMcFZhR0Z5eQo4K0FiK0VqUGViZkhVN24zZGN2R2NWMTNGeUgwQTBzdDcxMTNVWnMxMTY2SEZleUlhZ1NMZEdqOG8xenRyVXJvClJtakJWVTlid0MzbmZycyttck9UaWt3UzVNVmdqVDlwMlZqQVd3SURBUUFCbzRHaE1JR2VNQjhHQTFVZEl3UVkKTUJhQUZQSnpQb2o5Zm95ZE51VWlmUHdwWk1NWEdETWpNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEZ1lEVlIwUApBUUgvQkFRREFnSEdNQjBHQTFVZERnUVdCQlR5Y3o2SS9YNk1uVGJsSW56OEtXVERGeGd6SXpBN0JnZ3JCZ0VGCkJRY0JBUVF2TUMwd0t3WUlLd1lCQlFVSE1BR0dIMmgwZEhBNkx5OXBjR0V0WTJFdVpYZHBaVzB1WTI5dEwyTmgKTDI5amMzQXdEUVlKS29aSWh2Y05BUUVMQlFBRGdnRUJBQ0pLWFJFdXVuNW14a3M3LzlzZGgrb01CT3BWYysrYQpMa1JrTE1BMWtaYWpDRmU2amRLbmNhWVA4KzJvQnhVZ2dYekh2QWszZFlyZjBXV0NLK211MjhjeEpNK0lFVzk4CkljOWVaRGxsbUIxMnYxb0x6ZDZtWlp1dzB6MWEvVVE4QWl1OEVyQkgyd0ZGT0JLYkkvUWVuOFZxdmhsbmxSN3oKSVI1L3ZKS1EzU3BxczB0SmtSeDY5SXMwU1AxK1hqNUtZTE5sajlpVVNiaDl1bzQxd2JnMDk1MTJGNVBwTm5mNQpVeXVHeloxYVJSNE1jNFAwOFZld2xZSVBMTnZMc2xoZVpLUGdnc2U5VmpHdG8wbEFpOHBMaUFhV3J4YWhKWE1vCjRrSVRuVzk5Qld6UXlpeGxlMjZSd3lOOG1KQ1pXV2JLZVBFZVZLTEQzVFJXRTJwNTEzbWhGeWc9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+
+        # The DN and password for an application service account. The connector uses
+        # these credentials to search for users and groups. Not required if the LDAP
+        # server provides access for anonymous auth.
+        # Please note that if the bind password contains a `$`, it has to be saved in an
+        # environment variable which should be given as the value to `bindPW`.
+        bindDN: uid=$LDAP_SERVICE_USER,cn=users,dc=ewiem,dc=com
+        bindPW: $LDAP_SERVICE_PASSWORD
+
+        # The attribute to display in the provided password prompt. If unset, will
+        # display "Username"
+        usernamePrompt: SSO Username
+
+        # User search maps a username and password entered by a user to a LDAP entry.
+        userSearch:
+          # BaseDN to start the search from. It will translate to the query
+          # "(&(objectClass=person)(uid=<username>))".
+          baseDN: cn=users,dc=ewiem,dc=com
+          # Optional filter to apply when searching the directory.
+          filter: "(objectClass=person)"
+
+          # username attribute used for comparing user entries. This will be translated
+          # and combined with the other filter as "(<attr>=<username>)".
+          username: uid
+          # The following three fields are direct mappings of attributes on the user entry.
+          # String representation of the user.
+          idAttr: uid
+          # Required. Attribute to map to Email.
+          emailAttr: mail
+          # Maps to display name of users. No default value.
+          nameAttr: name
+          # Maps to preferred username of users. No default value.
+          preferredUsernameAttr: uid
+
+        # Group search queries for groups given a user entry.
+        groupSearch:
+          # BaseDN to start the search from. It will translate to the query
+          # "(&(objectClass=group)(member=<user uid>))".
+          baseDN: cn=groups,dc=freeipa,dc=ewiem,dc=com
+          # Optional filter to apply when searching the directory.
+          filter: "(objectClass=group)"
+
+          # Following list contains field pairs that are used to match a user to a group. It adds an additional
+          # requirement to the filter that an attribute in the group must match the user's
+          # attribute value.
+          userMatchers:
+          - userAttr: uid
+            groupAttr: member
+
+          # Represents group name.
+          nameAttr: name
+    oauth2:
+      skipApprovalScreen: true
+    staticClients:
+    - id: dex-auth
+      redirectURIs:
+      - 'http://127.0.0.1:5555/callback'
+      name: 'Dex App'
+      secret: ZXhhbXBsZS1hcHAtc2VjcmV0
+
+    enablePasswordDB: true
+    staticPasswords:
+    - email: "admin@dexauth.com"
+      # bcrypt hash of the string "password": $(echo password | htpasswd -BinC 10 admin | cut -d: -f2)
+      hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+      username: "admin"
+      userID: "08a8684b-db88-4b73-90a9-3cd1661f5466"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dex
+  namespace: dex
+spec:
+  ports:
+  - name: dex
+    port: 5556
+    protocol: TCP
+    targetPort: 5556
+  selector:
+    app: dex
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dex-ingress
+  namespace: dex
+  
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: dex.ewiem.com
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: dex
+            port: 
+              number: 5556
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: dex
+  name: dex
+  namespace: dex
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dex
+rules:
+- apiGroups: ["dex.coreos.com"] # API group created by dex
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["apiextensions.k8s.io"]
+  resources: ["customresourcedefinitions"]
+  verbs: ["create"] # To manage its own resources, dex must be able to create customresourcedefinitions
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dex
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dex
+subjects:
+- kind: ServiceAccount
+  name: dex           # Service account assigned to the dex pod, created above
+  namespace: dex  # The namespace dex is running in
